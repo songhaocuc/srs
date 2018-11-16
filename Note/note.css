@@ -1,4 +1,33 @@
+body{
+    margin: 0 auto;
+    font-family: monospace,"Microsoft YaHei","SimHei", arial,sans-serif;
+    color: #444444;
+    line-height: 1;
+    padding: 30px;
+}
+
 h1 {
+    font-family: monospace,"Microsoft YaHei","SimHei", arial,sans-serif;
     font-size: 2.8em;
+    font-weight: bold;
+    color: teal ;
+}
+
+h2 {
+    font-family: monospace,"Microsoft YaHei","SimHei", arial,sans-serif;
+    font-size: 2em;
+    font-weight: bold;
     color: steelblue;
+}
+
+h3 {
+    font-family: monospace,"Microsoft YaHei","SimHei", arial,sans-serif;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: DarkSlateGray;
+}
+
+p.todo::before, p.todo {
+    content:"//TODO ";
+    color: dodgerblue ;
 }

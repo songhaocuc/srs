@@ -18,4 +18,27 @@ enum SrsListenerType
     SrsListenerFlv              = 5,
 };
 </pre>
+    
 
+
+# class SrsListener
+<pre>
+/**
+* the common tcp listener, for RTMP/HTTP server.
+*/
+class SrsListener
+{
+protected:
+    SrsListenerType type;
+protected:
+    std::string ip;
+    int port;
+    SrsServer* server;
+public:
+    SrsListener(SrsServer* svr, SrsListenerType t);
+    virtual ~SrsListener();
+public:
+    virtual SrsListenerType listen_type();
+    virtual int listen(std::string i, int p) = 0;
+};
+</pre>

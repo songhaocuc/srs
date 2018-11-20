@@ -1,9 +1,23 @@
-<link href="note.css" rel="stylesheet"></link>
+<link href="../../Style/note.css" rel="stylesheet"></link>
 
+<!-- TOC -->
 
-# srs_app_server
-## enum SrsListenerType
-<pre>
+- [1. srs_app_server](#1-srs_app_server)
+    - [1.1. enum SrsListenerType](#11-enum-srslistenertype)
+    - [1.2. class SrsListener](#12-class-srslistener)
+    - [1.3. class SrsStreamListener](#13-class-srsstreamlistener)
+    - [1.4. <p class="todo">rtsp/flv listener</p>](#14-p-classtodortspflv-listenerp)
+    - [1.5. class SrsUdpStreamListener](#15-class-srsudpstreamlistener)
+    - [1.6. <p class="todo">udp caster listener</p>](#16-p-classtodoudp-caster-listenerp)
+    - [1.7. class SrsSignalManager](#17-class-srssignalmanager)
+    - [1.8. class ISrsServerCycle](#18-class-isrsservercycle)
+    - [1.9. class SrsServer](#19-class-srsserver)
+
+<!-- /TOC -->
+
+# 1. srs_app_server
+## 1.1. enum SrsListenerType
+```cpp
 // listener type for server to identify the connection,
 // that is, use different type to process the connection.
 enum SrsListenerType 
@@ -21,12 +35,12 @@ enum SrsListenerType
     // TCP stream, FLV stream over HTTP.
     SrsListenerFlv              = 5,
 };
-</pre>
+```
 枚举类型 SrsListenerType。
 
 
-## class SrsListener
-<pre>
+## 1.2. class SrsListener
+```cpp
 /**
 * the common tcp listener, for RTMP/HTTP server.
 */
@@ -45,7 +59,7 @@ public:
     virtual SrsListenerType listen_type();
     virtual int listen(std::string i, int p) = 0;
 };
-</pre>
+```
 纯虚类 SrsListener，主要用于tcp连接的server，例如RTMP和HTTPserver。  
 <br>
 保存了ip地址、端口号以及SrsServer指针。  
@@ -54,8 +68,8 @@ SrsListenerType返回listener的类型。
 <p class="todo">之后补上具体说明</p>
 listen为纯虚函数，参数为string的ip地址以及int类型的端口号。
 
-## class SrsStreamListener
-<pre>
+## 1.3. class SrsStreamListener
+```cpp
 /**
 * tcp listener.
 */
@@ -72,12 +86,12 @@ public:
 public:
     virtual int on_tcp_client(st_netfd_t stfd);
 };
-</pre>
+```
 
-## <p class="todo">rtsp/flv listener</p>
+## 1.4. <p class="todo">rtsp/flv listener</p>
 
-## class SrsUdpStreamListener
-<pre>
+## 1.5. class SrsUdpStreamListener
+```cpp
 /**
  * the udp listener, for udp server.
  */
@@ -92,12 +106,12 @@ public:
 public:
     virtual int listen(std::string i, int p);
 };
-</pre>
+```
 
-## <p class="todo">udp caster listener</p>
+## 1.6. <p class="todo">udp caster listener</p>
 
-## class SrsSignalManager
+## 1.7. class SrsSignalManager
 
-## class ISrsServerCycle
+## 1.8. class ISrsServerCycle
 
-## class SrsServer
+## 1.9. class SrsServer

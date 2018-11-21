@@ -13,4 +13,7 @@ Todo List
     - [x] srs_core_autofree
     - [ ] srs_core_mem_watch
     - [ ] srs_core_performance
+
+2018-11-21
 - [ ] srs_app_log
+- [ ] kernel lib

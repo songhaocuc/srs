@@ -3,7 +3,7 @@
 <!-- TOC -->
 
 - [srs_app_log](#srsapplog)
-    - [class SrsFastLog](#class-srsfastlog)
+    - [class SrsThreadContext](#class-srsthreadcontext)
         - [base](#base)
             - [+ ISrsThreadContext](#isrsthreadcontext)
         - [property](#property)
@@ -12,9 +12,9 @@
             - [+ int generate_id()](#int-generateid)
             - [+ int get_id()](#int-getid)
             - [+ int set_id(int v)](#int-setidint-v)
-            - [- void clear_cid()](#void-clearcid)
+            - [+ void clear_cid()](#void-clearcid)
     - [macros](#macros)
-    - [class SrsThreadContext](#class-srsthreadcontext)
+    - [class SrsFastLog](#class-srsfastlog)
         - [base](#base-1)
             - [+ ISrsLog](#isrslog)
             - [+ ISrsReloadHandler](#isrsreloadhandler)
@@ -46,7 +46,7 @@
 
 # srs_app_log
 
-## class SrsFastLog 
+## class SrsThreadContext 
 ```cpp
 /**
 * st thread context, get_id will get the st-thread id, 
@@ -69,14 +69,57 @@ public:
 ```
 ### base
 #### + ISrsThreadContext
+ISrsThreadContext是在srs_kernel_log中定义的接口。  
+接口方法包括 generate_id()、get_id()和set_id()。
 ### property
 #### - std::map<st_thread_t, int> cache;
+
 ### method
 #### + int generate_id()
+```cpp
+int SrsThreadContext::generate_id()
+{
+    static int id = 100;
+    
+    int gid = id++;
+    cache[st_thread_self()] = gid;
+    return gid;
+}
+```
 #### + int get_id()
+```cpp
+int SrsThreadContext::get_id()
+{
+    return cache[st_thread_self()];
+}
+```
 #### + int set_id(int v)
-#### - void clear_cid()
-
+```cpp
+int SrsThreadContext::set_id(int v)
+{
+    st_thread_t self = st_thread_self();
+    
+    int ov = 0;
+    if (cache.find(self) != cache.end()) {
+        ov = cache[self];
+    }
+    
+    cache[self] = v;
+    
+    return ov;
+}
+```
+#### + void clear_cid()
+```cpp
+void SrsThreadContext::clear_cid()
+{
+    st_thread_t self = st_thread_self();
+    std::map<st_thread_t, int>::iterator it = cache.find(self);
+    if (it != cache.end()) {
+        cache.erase(it);
+    }
+}
+```
 
 ## macros
 ```cpp
@@ -90,7 +133,7 @@ public:
 ```
 
 
-## class SrsThreadContext
+## class SrsFastLog
 ```cpp
 /**
 * we use memory/disk cache and donot flush when write log.
@@ -135,17 +178,66 @@ private:
 ```
 ### base
 #### + ISrsLog
+ISrsLog是定义在srs_kernel_log的日志接口类。  
+接口方法包括初始化的initialize()方法和五种不同等级的日志打印方法。
 #### + ISrsReloadHandler
+ISrsReloadHandler是定义在srs_app_reload中的reload接口类，用于配置更新时重新加载服务器。  
+该类是观察者类，SrsConfig是被观察者。SrsConfig中包含保存该类指针的向量，应该是用于重新加载时更新配置。
+<p class="todo">粗略看了一下， 之后看一下所有继承这个的类</p>
+
 ### property
 #### # int _level
+int _level保存的是SrsLogLevel枚举类型的值。
 #### - char* log_data
 #### - int fd
 #### - bool log_to_file_tank
 #### - bool utc
 ### method
 #### + SrsFastLog()
+```cpp
+SrsFastLog::SrsFastLog()
+{
+    _level = SrsLogLevel::Trace;
+    log_data = new char[LOG_MAX_SIZE];
+
+    fd = -1;
+    log_to_file_tank = false;
+    utc = false;
+}
+```
 #### + virtual ~SrsFastLog()
+```cpp
+SrsFastLog::~SrsFastLog()
+{
+    srs_freepa(log_data);
+
+    if (fd > 0) {
+        ::close(fd);
+        fd = -1;
+    }
+
+    if (_srs_config) {
+        _srs_config->unsubscribe(this);
+    }
+}
+```
 #### + int initialize()
+```cpp
+int SrsFastLog::initialize()
+{
+    int ret = ERROR_SUCCESS;
+    
+    if (_srs_config) {
+        _srs_config->subscribe(this);
+    
+        log_to_file_tank = _srs_config->get_log_tank_file();
+        _level = srs_get_log_level(_srs_config->get_log_level());
+        utc = _srs_config->get_utc_time();
+    }
+    
+    return ret;
+}
+```
 #### + void verbose(const char* tag, int context_id, const char* fmt, ...)
 #### + void info(const char* tag, int context_id, const char* fmt, ...)
 #### + void trace(const char* tag, int context_id, const char* fmt, ...)

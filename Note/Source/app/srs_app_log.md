@@ -131,7 +131,9 @@ void SrsThreadContext::clear_cid()
 // reserved for the end of log data, it must be strlen(LOG_TAIL)
 #define LOG_TAIL_SIZE 1
 ```
-
+LOG_MAX_SIZE定义一行日志的最大长度。  
+LOG_TAIL定义换行符(每条日志结尾)。  
+LOG_TAIL_SIZE为日志结束符的长度。
 
 ## class SrsFastLog
 ```cpp
@@ -187,11 +189,15 @@ ISrsReloadHandler是定义在srs_app_reload中的reload接口类，用于配置�
 
 ### property
 #### # int _level
-int _level保存的是SrsLogLevel枚举类型的值。
+int _level保存的是SrsLogLevel枚举类型的值。默认为SrsLogLevel::Trace。
 #### - char* log_data
+`log_data = new char[LOG_MAX_SIZE];`初始化了log_data，log_data是日志的缓冲区，大小为宏定义的每条日志的最大长度。
 #### - int fd
+指定日志文件之后，是否写入日志文件的标志。默认为-1.
 #### - bool log_to_file_tank
+是否把日志写入file tank? <p class="todo"/>
 #### - bool utc
+是否使用UTC时间。协调世界时，又称世界统一时间、世界标准时间、国际协调时间。由于英文（CUT）和法文（TUC）的缩写不同，作为妥协，简称UTC。
 ### method
 #### + SrsFastLog()
 ```cpp
@@ -205,6 +211,7 @@ SrsFastLog::SrsFastLog()
     utc = false;
 }
 ```
+SrsFastLog的构造函数。构造函数中对成员变量做了初始化工作，并没有真正的初始化日志所需的所有内容，这部分工作放在initialize()方法中。
 #### + virtual ~SrsFastLog()
 ```cpp
 SrsFastLog::~SrsFastLog()
@@ -221,6 +228,11 @@ SrsFastLog::~SrsFastLog()
     }
 }
 ```
+SrsFastLog的析构函数。  
+srs_freepa()是srs的[srs_core](../core/srs_core.md#free-points)中定义的自动释放数组指针的方法宏。释放非数组指针的方法为srs_freep()。  
+在析构函数中释放了构造函数中new的日志缓冲区。
+close(fd)释放了日志文件句柄。  
+解除订阅srs_config，这是观察者设计模式中的内容。在订阅srs_config之后，srs_config改动后会通知其所有订阅者并使其执行相应任务，在析构前如果不解除订阅，srs_config发布消息时会因为空指针而报错。<p class="todo">推测</p>
 #### + int initialize()
 ```cpp
 int SrsFastLog::initialize()
@@ -238,18 +250,267 @@ int SrsFastLog::initialize()
     return ret;
 }
 ```
+
+initlialize()方法中进行了打印日志前所需的准备工作。  
+首先订阅srs_config，使得在srs配置改变时自己也做出相应的调整。  
+然后根据真正的配置来修改自身的成员变量。
+
+
 #### + void verbose(const char* tag, int context_id, const char* fmt, ...)
+```cpp
+void SrsFastLog::verbose(const char* tag, int context_id, const char* fmt, ...)
+{
+    if (_level > SrsLogLevel::Verbose) {
+        return;
+    }
+    
+    int size = 0;
+    if (!generate_header(false, tag, context_id, "verb", &size)) {
+        return;
+    }
+    
+    va_list ap;
+    va_start(ap, fmt);
+    // we reserved 1 bytes for the new line.
+    size += vsnprintf(log_data + size, LOG_MAX_SIZE - size, fmt, ap);
+    va_end(ap);
+
+    write_log(fd, log_data, size, SrsLogLevel::Verbose);
+}
+```
+
+首先进行日志类型的判断。SrsLogLevel中的日志类型为static int，因此可以进行比较。   
+[generate_header](#bool-generateheaderbool-error-const-char-tag-int-contextid-const-char-levelname-int-headersize)用于产生日志头并利用传指针的方式返回日志头长度。   
+[va_list](https://blog.csdn.net/qingshui23/article/details/58586545)用于C语言中解决变参问题。   
+```cpp
+void va_start ( va_list ap, param );
+//对va_list变量进行初始化，将ap指针指向参数列表中的第一个参数
+type va_arg ( va_list ap, type ); 
+//获取参数，类型为 type 类型，返回值也为 type 类型
+int vsprintf(char *string, char *format, va_list ap);
+//将ap(通常是字符串) 按format格式写入字符串string中
+void va_end ( va_list ap ); 
+//回收ap指针
+--------------------- 
+原文：https://blog.csdn.net/qingshui23/article/details/58586545 
+```
+[write_log](#void-writelogint-fd-char-strlog-int-size-int-level)将日志写入文件中。
 #### + void info(const char* tag, int context_id, const char* fmt, ...)
+和[verbose](#void-verboseconst-char-tag-int-contextid-const-char-fmt)相同，只是日志等级不同。
 #### + void trace(const char* tag, int context_id, const char* fmt, ...)
+和[verbose](#void-verboseconst-char-tag-int-contextid-const-char-fmt)相同，只是日志等级不同。
 #### + void warn(const char* tag, int context_id, const char* fmt, ...)
+和[verbose](#void-verboseconst-char-tag-int-contextid-const-char-fmt)相同，只是日志等级不同。
 #### + void error(const char* tag, int context_id, const char* fmt, ...)
+和[verbose](#void-verboseconst-char-tag-int-contextid-const-char-fmt)相同，只是日志等级不同。
 #### - bool generate_header(bool error, const char* tag, int context_id, const char* level_name, int* header_size)
+
+```cpp
+bool SrsFastLog::generate_header(bool error, const char* tag, int context_id, const char* level_name, int* header_size)
+{
+    // clock time
+    timeval tv;
+    if (gettimeofday(&tv, NULL) == -1) {
+        return false;
+    }
+    
+    // to calendar time
+    struct tm* tm;
+    if (utc) {
+        if ((tm = gmtime(&tv.tv_sec)) == NULL) {
+            return false;
+        }
+    } else {
+        if ((tm = localtime(&tv.tv_sec)) == NULL) {
+            return false;
+        }
+    }
+    
+    // write log header
+    int log_header_size = -1;
+    
+    if (error) {
+        if (tag) {
+            log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
+                "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%s][%d][%d][%d] ", 
+                1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
+                level_name, tag, getpid(), context_id, errno);
+        } else {
+            log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
+                "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%d][%d][%d] ", 
+                1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
+                level_name, getpid(), context_id, errno);
+        }
+    } else {
+        if (tag) {
+            log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
+                "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%s][%d][%d] ", 
+                1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
+                level_name, tag, getpid(), context_id);
+        } else {
+            log_header_size = snprintf(log_data, LOG_MAX_SIZE, 
+                "[%d-%02d-%02d %02d:%02d:%02d.%03d][%s][%d][%d] ", 
+                1900 + tm->tm_year, 1 + tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, (int)(tv.tv_usec / 1000), 
+                level_name, getpid(), context_id);
+        }
+    }
+
+    if (log_header_size == -1) {
+        return false;
+    }
+    
+    // write the header size.
+    *header_size = srs_min(LOG_MAX_SIZE - 1, log_header_size);
+    
+    return true;
+}
+```
+用于产生日志头。
 #### - void write_log(int& fd, char* str_log, int size, int level)
+```cpp
+void SrsFastLog::write_log(int& fd, char *str_log, int size, int level)
+{
+    // ensure the tail and EOF of string
+    //      LOG_TAIL_SIZE for the TAIL char.
+    //      1 for the last char(0).
+    size = srs_min(LOG_MAX_SIZE - 1 - LOG_TAIL_SIZE, size);
+    
+    // add some to the end of char.
+    str_log[size++] = LOG_TAIL;
+    
+    // if not to file, to console and return.
+    if (!log_to_file_tank) {
+        // if is error msg, then print color msg.
+        // \033[31m : red text code in shell
+        // \033[32m : green text code in shell
+        // \033[33m : yellow text code in shell
+        // \033[0m : normal text code
+        if (level <= SrsLogLevel::Trace) {
+            printf("%.*s", size, str_log);
+        } else if (level == SrsLogLevel::Warn) {
+            printf("\033[33m%.*s\033[0m", size, str_log);
+        } else{
+            printf("\033[31m%.*s\033[0m", size, str_log);
+        }
+        fflush(stdout);
+
+        return;
+    }
+    
+    // open log file. if specified
+    if (fd < 0) {
+        open_log_file();
+    }
+    
+    // write log to file.
+    if (fd > 0) {
+        ::write(fd, str_log, size);
+    }
+}
+```
+将日志写入文件。
+
 #### - void open_log_file()
+```cpp
+void SrsFastLog::open_log_file()
+{
+    if (!_srs_config) {
+        return;
+    }
+    
+    std::string filename = _srs_config->get_log_file();
+    
+    if (filename.empty()) {
+        return;
+    }
+    
+    fd = ::open(filename.c_str(), O_RDWR | O_APPEND);
+    
+    if(fd == -1 && errno == ENOENT) {
+        fd = open(filename.c_str(), 
+            O_RDWR | O_CREAT | O_TRUNC, 
+            S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH
+        );
+    }
+}
+```
+
 ### interface ISrsReloadHandler
+下列函数是从ISrsReloadHandler接口中继承来的方法。
 #### + int on_reload_utc_time();
+```cpp
+int SrsFastLog::on_reload_utc_time()
+{
+    utc = _srs_config->get_utc_time();
+    
+    return ERROR_SUCCESS;
+}
+```
 #### + int on_reload_log_tank();
+```cpp
+int SrsFastLog::on_reload_log_tank()
+{
+    int ret = ERROR_SUCCESS;
+    
+    if (!_srs_config) {
+        return ret;
+    }
+
+    bool tank = log_to_file_tank;
+    log_to_file_tank = _srs_config->get_log_tank_file();
+
+    if (tank) {
+        return ret;
+    }
+
+    if (!log_to_file_tank) {
+        return ret;
+    }
+
+    if (fd > 0) {
+        ::close(fd);
+    }
+    open_log_file();
+    
+    return ret;
+}
+```
 #### + int on_reload_log_level();
+```cpp
+int SrsFastLog::on_reload_log_level()
+{
+    int ret = ERROR_SUCCESS;
+    
+    if (!_srs_config) {
+        return ret;
+    }
+    
+    _level = srs_get_log_level(_srs_config->get_log_level());
+    
+    return ret;
+}
+```
 #### + int on_reload_log_file();
+```cpp
+int SrsFastLog::on_reload_log_file()
+{
+    int ret = ERROR_SUCCESS;
+    
+    if (!_srs_config) {
+        return ret;
+    }
+
+    if (!log_to_file_tank) {
+        return ret;
+    }
+
+    if (fd > 0) {
+        ::close(fd);
+    }
+    open_log_file();
+    
+    return ret;
+}
+```
 
 

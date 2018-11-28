@@ -15,8 +15,10 @@ Todo List
     - [ ] srs_core_performance
 
 2018-11-21
-- [ ] srs_app_log
+- [x] srs_app_log
 - [ ] kernel lib
 
 2018-11-28
 - [ ] 先大致明白类之间的关系，然后跑起来看具体内容。
+- [ ] 完整的直播流程，从推流到观看。
+

@@ -21,4 +21,8 @@ Todo List
 2018-11-28
 - [ ] 先大致明白类之间的关系，然后跑起来看具体内容。
 - [ ] 完整的直播流程，从推流到观看。
+- [ ] st
+
+2018-11-30
+- [x] http-parser MAKEFILE CFLAGS '-Werror'
 

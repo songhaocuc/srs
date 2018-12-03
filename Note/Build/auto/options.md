@@ -1,9 +1,24 @@
 <link href="../../Style/note.css" rel="stylesheet"></link>
 
+<!-- TOC -->
+
+- [options](#options)
+    - [show_help()](#show_help)
+    - [parse_user_option()](#parse_user_option)
+    - [parse_user_option_to_value_and_option()](#parse_user_option_to_value_and_option)
+    - [parse preset options](#parse-preset-options)
+    - [apply_user_presets](#apply_user_presets)
+    - [apply_user_detail_options](#apply_user_detail_options)
+    - [regenerate_options](#regenerate_options)
+    - [check user options](#check-user-options)
+    - [差不多 有问题再仔细看](#差不多-有问题再仔细看)
+
+<!-- /TOC -->
+
 # options
 
 ## show_help()
-```shell
+```sh
 function show_help() {
     cat << END
 
@@ -214,3 +229,639 @@ function parse_user_option_to_value_and_option() {
 }
 ```
 将`-option=value`形式的选项解析为value和option
+
+## parse preset options
+```sh
+#####################################################################################
+# parse preset options
+#####################################################################################
+opt=
+
+for option
+do
+    opt="$opt `echo $option | sed -e \"s/\(--[^=]*=\)\(.* .*\)/\1'\2'/\"`"
+    parse_user_option_to_value_and_option
+    parse_user_option
+done
+
+if [ $help = yes ]; then
+    show_help
+    exit 0
+fi
+```
+for option会遍历所有的参数。即调用该脚本的参数。将所有的option拼到opt后面。
+
+## apply_user_presets
+```sh
+function apply_user_presets() {
+    # always set the log level for all presets.
+    SRS_LOG_VERBOSE=NO
+    SRS_LOG_INFO=NO
+    SRS_LOG_TRACE=YES
+    
+    # set default preset if not specifies
+    if [ $SRS_RTMP_HLS = NO ]; then
+        if [ $SRS_PURE_RTMP = NO ]; then
+            if [ $SRS_FAST = NO ]; then
+                if [ $SRS_DISABLE_ALL = NO ]; then
+                    if [ $SRS_ENABLE_ALL = NO ]; then
+                        if [ $SRS_DEV = NO ]; then
+                            if [ $SRS_FAST_DEV = NO ]; then
+                                if [ $SRS_DEMO = NO ]; then
+                                    if [ $SRS_ARM_UBUNTU12 = NO ]; then
+                                        if [ $SRS_MIPS_UBUNTU12 = NO ]; then
+                                            if [ $SRS_PI = NO ]; then
+                                                if [ $SRS_CUBIE = NO ]; then
+                                                    if [ $SRS_X86_X64 = NO ]; then
+                                                        if [ $SRS_OSX = NO ]; then
+                                                            SRS_X86_X64=YES; opt="--x86-x64 $opt";
+                                                        fi
+                                                    fi
+                                                fi
+                                            fi
+                                        fi
+                                    fi
+                                fi
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+    
+    # whether embeded cpu.
+    if [ $SRS_ARM_UBUNTU12 = YES ]; then
+        SRS_CROSS_BUILD=YES
+    fi
+    if [ $SRS_MIPS_UBUNTU12 = YES ]; then
+        SRS_CROSS_BUILD=YES
+    fi
+
+    # all disabled.
+    if [ $SRS_DISABLE_ALL = YES ]; then
+        SRS_HLS=NO
+        SRS_HDS=NO
+        SRS_DVR=NO
+        SRS_NGINX=NO
+        SRS_SSL=NO
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=NO
+        SRS_INGEST=NO
+        SRS_STAT=NO
+        SRS_HTTP_CORE=NO
+        SRS_HTTP_CALLBACK=NO
+        SRS_HTTP_SERVER=NO
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=NO
+        SRS_LIBRTMP=NO
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # all enabled.
+    if [ $SRS_ENABLE_ALL = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=YES
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=YES
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=YES
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=YES
+        SRS_UTEST=YES
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # only rtmp vp6
+    if [ $SRS_FAST = YES ]; then
+        SRS_HLS=NO
+        SRS_HDS=NO
+        SRS_DVR=NO
+        SRS_NGINX=NO
+        SRS_SSL=NO
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=NO
+        SRS_INGEST=NO
+        SRS_STAT=NO
+        SRS_HTTP_CORE=NO
+        SRS_HTTP_CALLBACK=NO
+        SRS_HTTP_SERVER=NO
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=NO
+        SRS_LIBRTMP=NO
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # all disabled.
+    if [ $SRS_RTMP_HLS = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=NO
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=NO
+        SRS_INGEST=NO
+        SRS_STAT=NO
+        SRS_HTTP_CORE=NO
+        SRS_HTTP_CALLBACK=NO
+        SRS_HTTP_SERVER=NO
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=NO
+        SRS_LIBRTMP=NO
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # only ssl for RTMP with complex handshake.
+    if [ $SRS_PURE_RTMP = YES ]; then
+        SRS_HLS=NO
+        SRS_HDS=NO
+        SRS_DVR=NO
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=NO
+        SRS_INGEST=NO
+        SRS_STAT=NO
+        SRS_HTTP_CORE=NO
+        SRS_HTTP_CALLBACK=NO
+        SRS_HTTP_SERVER=NO
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=NO
+        SRS_LIBRTMP=NO
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # if arm specified, set some default to disabled.
+    if [ $SRS_ARM_UBUNTU12 = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        # TODO: FIXME: need static? maybe donot.
+        SRS_STATIC=YES
+    fi
+
+    # if mips specified, set some default to disabled.
+    if [ $SRS_MIPS_UBUNTU12 = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # defaults for x86/x64
+    if [ $SRS_X86_X64 = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=YES
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # for osx(darwin)
+    if [ $SRS_OSX = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # if dev specified, open features if possible.
+    if [ $SRS_DEV = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=YES
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=YES
+        SRS_UTEST=YES
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # if fast dev specified, open main server features.
+    if [ $SRS_FAST_DEV = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=NO
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+	
+    # for srs demo
+    if [ $SRS_DEMO = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=YES
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=YES
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # if raspberry-pi specified, open ssl/hls/static features
+    if [ $SRS_PI = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+
+    # if cubieboard specified, open features except ffmpeg/nginx.
+    if [ $SRS_CUBIE = YES ]; then
+        SRS_HLS=YES
+        SRS_HDS=YES
+        SRS_DVR=YES
+        SRS_NGINX=NO
+        SRS_SSL=YES
+        SRS_FFMPEG_TOOL=YES
+        SRS_TRANSCODE=YES
+        SRS_INGEST=YES
+        SRS_STAT=YES
+        SRS_HTTP_CORE=YES
+        SRS_HTTP_CALLBACK=YES
+        SRS_HTTP_SERVER=YES
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=YES
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=NO
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+}
+apply_user_presets
+```
+
+## apply_user_detail_options
+
+```sh
+#####################################################################################
+# parse detail feature options
+#####################################################################################
+for option
+do
+    parse_user_option_to_value_and_option
+    parse_user_option
+done
+
+function apply_user_detail_options() {
+    # if transcode/ingest specified, requires the ffmpeg stub classes.
+    SRS_FFMPEG_STUB=NO
+    if [ $SRS_TRANSCODE = YES ]; then SRS_FFMPEG_STUB=YES; fi
+    if [ $SRS_INGEST = YES ]; then SRS_FFMPEG_STUB=YES; fi
+
+    # if http-xxxx specified, open the SRS_HTTP_CORE
+    SRS_HTTP_CORE=NO
+    if [ $SRS_HTTP_CALLBACK = YES ]; then SRS_HTTP_CORE=YES; fi
+    if [ $SRS_HTTP_SERVER = YES ]; then SRS_HTTP_CORE=YES; fi
+    if [ $SRS_HTTP_API = YES ]; then SRS_HTTP_CORE=YES; fi
+
+    # parse the jobs for make
+    if [[ "" -eq SRS_JOBS ]]; then 
+        export SRS_JOBS="--jobs=1" 
+    else
+        export SRS_JOBS="--jobs=${SRS_JOBS}"
+    fi
+    
+    # if specified export single file, export project first.
+    if [ $SRS_EXPORT_LIBRTMP_SINGLE != NO ]; then
+        SRS_EXPORT_LIBRTMP_PROJECT=$SRS_EXPORT_LIBRTMP_SINGLE
+    fi
+    
+    # disable almost all features for export srs-librtmp.
+    if [ $SRS_EXPORT_LIBRTMP_PROJECT != NO ]; then
+        SRS_HLS=NO
+        SRS_HDS=NO
+        SRS_DVR=NO
+        SRS_NGINX=NO
+        SRS_SSL=NO
+        SRS_FFMPEG_TOOL=NO
+        SRS_TRANSCODE=NO
+        SRS_INGEST=NO
+        SRS_STAT=NO
+        SRS_HTTP_CORE=NO
+        SRS_HTTP_CALLBACK=NO
+        SRS_HTTP_SERVER=NO
+        SRS_STREAM_CASTER=NO
+        SRS_HTTP_API=NO
+        SRS_LIBRTMP=YES
+        SRS_RESEARCH=YES
+        SRS_UTEST=NO
+        SRS_GPERF=NO
+        SRS_GPERF_MC=NO
+        SRS_GPERF_MP=NO
+        SRS_GPERF_CP=NO
+        SRS_GPROF=NO
+        SRS_STATIC=NO
+    fi
+}
+apply_user_detail_options
+```
+
+## regenerate_options
+```sh
+function regenerate_options() {
+    # save all config options to macro to write to auto headers file
+    SRS_AUTO_USER_CONFIGURE="$opt"
+    # regenerate the options for default values.
+SRS_AUTO_CONFIGURE="--prefix=${SRS_PREFIX}"
+    if [ $SRS_HLS = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-hls"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-hls"; fi
+    if [ $SRS_HDS = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-hds"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-hds"; fi
+    if [ $SRS_DVR = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-dvr"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-dvr"; fi
+    if [ $SRS_NGINX = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-nginx"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-nginx"; fi
+    if [ $SRS_SSL = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-ssl"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-ssl"; fi
+    if [ $SRS_FFMPEG_TOOL = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-ffmpeg"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-ffmpeg"; fi
+    if [ $SRS_TRANSCODE = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-transcode"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-transcode"; fi
+    if [ $SRS_INGEST = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-ingest"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-ingest"; fi
+    if [ $SRS_STAT = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-stat"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-stat"; fi
+    if [ $SRS_HTTP_CALLBACK = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-http-callback"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-http-callback"; fi
+    if [ $SRS_HTTP_SERVER = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-http-server"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-http-server"; fi
+    if [ $SRS_STREAM_CASTER = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-stream-caster"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-stream-caster"; fi
+    if [ $SRS_HTTP_API = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-http-api"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-http-api"; fi
+    if [ $SRS_LIBRTMP = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-librtmp"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-librtmp"; fi
+    if [ $SRS_RESEARCH = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-research"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-research"; fi
+    if [ $SRS_UTEST = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-utest"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-utest"; fi
+    if [ $SRS_GPERF = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-gperf"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-gperf"; fi
+    if [ $SRS_GPERF_MC = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-gmc"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-gmc"; fi
+    if [ $SRS_GPERF_MP = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-gmp"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-gmp"; fi
+    if [ $SRS_GPERF_CP = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-gcp"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-gcp"; fi
+    if [ $SRS_GPROF = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-gprof"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-gprof"; fi
+    if [ $SRS_ARM_UBUNTU12 = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-arm-ubuntu12"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-arm-ubuntu12"; fi
+    if [ $SRS_MIPS_UBUNTU12 = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --with-mips-ubuntu12"; else SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --without-mips-ubuntu12"; fi
+    if [ $SRS_STATIC = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --static"; fi
+    if [ $SRS_LOG_VERBOSE = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --log-verbose"; fi
+    if [ $SRS_LOG_INFO = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --log-info"; fi
+    if [ $SRS_LOG_TRACE = YES ]; then SRS_AUTO_CONFIGURE="${SRS_AUTO_CONFIGURE} --log-trace"; fi
+    echo "regenerate config: ${SRS_AUTO_CONFIGURE}"
+}
+regenerate_options
+```
+
+## check user options
+```sh
+#####################################################################################
+# check user options
+#####################################################################################
+function check_option_conflicts() {
+    __check_ok=YES
+    # check conflict
+    if [ $SRS_GPERF = NO ]; then
+        if [ $SRS_GPERF_MC = YES ]; then echo "gperf-mc depends on gperf, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPERF_MP = YES ]; then echo "gperf-mp depends on gperf, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPERF_CP = YES ]; then echo "gperf-cp depends on gperf, see: ./configure --help"; __check_ok=NO; fi
+    fi
+    if [[ $SRS_GPERF_MC = YES && $SRS_GPERF_MP = YES ]]; then
+        echo "gperf-mc not compatible with gperf-mp, see: ./configure --help";
+        echo "@see: http://google-perftools.googlecode.com/svn/trunk/doc/heap_checker.html";
+        echo "Note that since the heap-checker uses the heap-profiling framework internally, it is not possible to run both the heap-checker and heap profiler at the same time";
+        __check_ok=NO
+    fi
+    if [[ $SRS_HTTP_CORE = NO && $SRS_STREAM_CASTER = YES ]]; then
+       echo "stream-caster depends on http-api or http-server, see: ./configure --help"; __check_ok=NO;
+    fi
+    # generate the group option: SRS_GPERF
+    __gperf_slow=NO
+    if [ $SRS_GPERF_MC = YES ]; then SRS_GPERF=YES; __gperf_slow=YES; fi
+    if [ $SRS_GPERF_MP = YES ]; then SRS_GPERF=YES; __gperf_slow=YES; fi
+    if [ $SRS_GPERF_CP = YES ]; then SRS_GPERF=YES; __gperf_slow=YES; fi
+    if [ $__gperf_slow = YES ]; then if [ $SRS_GPROF = YES ]; then 
+        echo "gmc/gmp/gcp not compatible with gprof, see: ./configure --help"; __check_ok=NO; 
+    fi fi
+
+    # check embeded(arm/mips), if embeded enabled, only allow st/ssl/librtmp,
+    # user should disable all other features
+    if [ $SRS_CROSS_BUILD = YES ]; then
+        if [ $SRS_FFMPEG_TOOL = YES ]; then echo "ffmpeg for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_RESEARCH = YES ]; then echo "research for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPERF = YES ]; then echo "gperf for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPERF_MC = YES ]; then echo "gmc for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPERF_MP = YES ]; then echo "gmp for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPERF_CP = YES ]; then echo "gcp for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+        if [ $SRS_GPROF = YES ]; then echo "gprof for arm is not available, see: ./configure --help"; __check_ok=NO; fi
+    fi
+
+    # if x86/x64 or directly build, never use static
+    if [[ $SRS_X86_X64 = YES &&  $SRS_STATIC = YES ]]; then
+        echo "x86/x64 should never use static, see: ./configure --help"; __check_ok=NO;
+    fi
+    
+    # TODO: FIXME: check more os.
+
+    # check variable neccessary
+    if [ $SRS_HLS = RESERVED ]; then echo "you must specifies the hls, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_HDS = RESERVED ]; then echo "you must specifies the hds, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_DVR = RESERVED ]; then echo "you must specifies the dvr, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_NGINX = RESERVED ]; then echo "you must specifies the nginx, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_SSL = RESERVED ]; then echo "you must specifies the ssl, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_FFMPEG_TOOL = RESERVED ]; then echo "you must specifies the ffmpeg, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_HTTP_CALLBACK = RESERVED ]; then echo "you must specifies the http-callback, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_HTTP_SERVER = RESERVED ]; then echo "you must specifies the http-server, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_STREAM_CASTER = RESERVED ]; then echo "you must specifies the stream-caster, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_HTTP_API = RESERVED ]; then echo "you must specifies the http-api, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_LIBRTMP = RESERVED ]; then echo "you must specifies the librtmp, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_RESEARCH = RESERVED ]; then echo "you must specifies the research, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_UTEST = RESERVED ]; then echo "you must specifies the utest, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_GPERF = RESERVED ]; then echo "you must specifies the gperf, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_GPERF_MC = RESERVED ]; then echo "you must specifies the gperf-mc, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_GPERF_MP = RESERVED ]; then echo "you must specifies the gperf-mp, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_GPERF_CP = RESERVED ]; then echo "you must specifies the gperf-cp, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_GPROF = RESERVED ]; then echo "you must specifies the gprof, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_ARM_UBUNTU12 = RESERVED ]; then echo "you must specifies the arm-ubuntu12, see: ./configure --help"; __check_ok=NO; fi
+    if [ $SRS_MIPS_UBUNTU12 = RESERVED ]; then echo "you must specifies the mips-ubuntu12, see: ./configure --help"; __check_ok=NO; fi
+    if [[ -z $SRS_PREFIX ]]; then echo "you must specifies the prefix, see: ./configure --prefix"; __check_ok=NO; fi
+    if [ $__check_ok = NO ]; then
+        exit 1;
+    fi
+}
+check_option_conflicts
+```
+
+## 差不多 有问题再仔细看

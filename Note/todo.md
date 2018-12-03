@@ -26,3 +26,7 @@ Todo List
 2018-11-30
 - [x] http-parser MAKEFILE CFLAGS '-Werror'
 
+2018-12-03
+- [x] options.sh差不多了，遇到和options有关的问题再来仔细看
+- [ ] depends好好看看
+- [ ] auto_headers
